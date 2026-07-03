@@ -1,0 +1,1189 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Relevamiento Neteco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!--
+  ============================================================
+  CONFIGURACIÓN DE FIREBASE
+  ============================================================
+  1. Andá a https://console.firebase.google.com → "Agregar proyecto".
+  2. Dentro del proyecto: Compilación (Build) → Firestore Database →
+     "Crear base de datos" → modo producción → elegí una región (ej. southamerica-east1).
+  3. Compilación → Authentication → pestaña "Sign-in method" → habilitá
+     el proveedor "Anónimo" (Anonymous). Esto es solo para que la app
+     pueda leer/escribir en Firestore de forma seleccionada; el login
+     real de usuario/contraseña lo maneja esta misma app, no Firebase Auth.
+  4. Ícono de engranaje (⚙) → "Configuración del proyecto" → bajá hasta
+     "Tus apps" → ícono </> (Web) → registrá una app → copiá el objeto
+     "firebaseConfig" que te muestra y pegalo abajo, reemplazando el que
+     dice "PEGÁ_ACÁ_TU_CONFIG".
+  5. En Firestore → pestaña "Reglas", pegá esto y publicá:
+
+     rules_version = '2';
+     service cloud.firestore {
+       match /databases/{database}/documents {
+         match /{document=**} {
+           allow read, write: if request.auth != null;
+         }
+       }
+     }
+
+  ============================================================
+-->
+<style>
+  :root{
+    --bg:#0B0F16;
+    --panel:#121826;
+    --panel-2:#19212F;
+    --border:#26303F;
+    --text:#E7EDF4;
+    --text-dim:#8A97A6;
+    --accent:#00D9A5;
+    --accent-dim:#0A6E56;
+    --info:#3FA9F5;
+    --warn:#F5A623;
+    --danger:#EF4E5C;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(0,217,165,0.08), transparent),
+      radial-gradient(ellipse 700px 500px at 100% 0%, rgba(63,169,245,0.06), transparent),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+  }
+  .mono{font-family:'JetBrains Mono', monospace;}
+  h1,h2,h3{font-family:'Space Grotesk', sans-serif; margin:0;}
+  ::selection{background:var(--accent-dim); color:#fff;}
+  input, select, textarea, button{font-family:inherit; font-size:14px;}
+  a{color:var(--info);}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 28px; border-bottom:1px solid var(--border);
+    background:rgba(18,24,38,0.6); backdrop-filter:blur(6px);
+    position:sticky; top:0; z-index:20;
+  }
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-mark{
+    width:30px; height:30px; border-radius:7px;
+    background:linear-gradient(155deg, var(--accent), var(--info));
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .brand-mark svg{width:17px; height:17px;}
+  .brand-text .title{font-size:15px; font-weight:600; letter-spacing:0.2px;}
+  .brand-text .sub{font-size:11px; color:var(--text-dim); font-family:'JetBrains Mono',monospace;}
+  .who{display:flex; align-items:center; gap:12px;}
+  .who .name{font-size:13px; color:var(--text-dim);}
+  .who .name b{color:var(--text); font-weight:600;}
+  .btn{
+    border:1px solid var(--border); background:var(--panel-2); color:var(--text);
+    padding:8px 14px; border-radius:8px; cursor:pointer; transition:all .15s ease;
+  }
+  .btn:hover{border-color:var(--accent); color:var(--accent);}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#04231C; font-weight:600;}
+  .btn.primary:hover{filter:brightness(1.08); color:#04231C;}
+  .btn.ghost{background:transparent;}
+  .btn.danger{border-color:var(--danger); color:var(--danger); background:transparent;}
+  .btn.danger:hover{background:var(--danger); color:#fff;}
+  .btn.small{padding:5px 10px; font-size:12px; border-radius:6px;}
+  .btn:disabled{opacity:.4; cursor:not-allowed;}
+
+  /* ---------- layout ---------- */
+  .shell{max-width:1180px; margin:0 auto; padding:28px;}
+  .hidden{display:none !important;}
+
+  /* ---------- login ---------- */
+  .login-wrap{
+    min-height:calc(100vh - 64px); display:flex; align-items:center; justify-content:center;
+    padding:24px; position:relative; overflow:hidden;
+  }
+  .signal-art{position:absolute; inset:0; opacity:0.5; pointer-events:none;}
+  .login-card{
+    width:100%; max-width:380px; background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; padding:32px; position:relative; z-index:1;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.6);
+  }
+  .login-card .brand-mark{width:42px; height:42px; margin-bottom:16px;}
+  .login-card .brand-mark svg{width:24px; height:24px;}
+  .login-card h1{font-size:22px; margin-bottom:4px;}
+  .login-card p.lead{color:var(--text-dim); font-size:13px; margin:0 0 24px 0;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; letter-spacing:0.2px;}
+  .field input, .field select, .field textarea{
+    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    padding:10px 12px; border-radius:8px; outline:none; transition:border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent);}
+  .field textarea{resize:vertical; min-height:70px;}
+  .error-msg{
+    background:rgba(239,78,92,0.1); border:1px solid rgba(239,78,92,0.35); color:#FF9BA4;
+    padding:9px 12px; border-radius:8px; font-size:12.5px; margin-bottom:14px;
+  }
+  .warn-msg{
+    background:rgba(245,166,35,0.1); border:1px solid rgba(245,166,35,0.35); color:var(--warn);
+    padding:9px 12px; border-radius:8px; font-size:12px; margin-bottom:14px; line-height:1.5;
+  }
+  .ok-msg{
+    background:rgba(0,217,165,0.1); border:1px solid rgba(0,217,165,0.35); color:var(--accent);
+    padding:9px 12px; border-radius:8px; font-size:12.5px; margin-bottom:14px;
+  }
+  .hint{font-size:11.5px; color:var(--text-dim); margin-top:14px; line-height:1.5;}
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex; gap:6px; margin-bottom:22px; border-bottom:1px solid var(--border);}
+  .tab{
+    padding:10px 4px; margin-right:18px; color:var(--text-dim); cursor:pointer;
+    border-bottom:2px solid transparent; font-size:13.5px; font-weight:500; user-select:none;
+  }
+  .tab.active{color:var(--text); border-color:var(--accent);}
+  .tab:hover{color:var(--text);}
+
+  /* ---------- cards / panels ---------- */
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:24px;
+  }
+  .panel + .panel{margin-top:20px;}
+  .panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px;}
+  .panel-head h2{font-size:16px;}
+  .panel-head .desc{font-size:12px; color:var(--text-dim); margin-top:3px;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px 18px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px 18px;}
+  @media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr;}}
+
+  .status-select{position:relative;}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; flex-shrink:0;}
+  .dot.ok{background:var(--accent); box-shadow:0 0 6px var(--accent);}
+  .dot.falla{background:var(--danger); box-shadow:0 0 6px var(--danger);}
+  .dot.na{background:var(--text-dim);}
+
+  .check-field{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
+    padding:11px 14px; cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  .check-field:hover{border-color:#33455B;}
+  .check-field.checked{border-color:var(--accent); background:rgba(0,217,165,0.07);}
+  .check-field .cf-label{font-size:13px; color:var(--text); line-height:1.35; padding-right:8px;}
+  .check-field input[type="checkbox"]{position:absolute; opacity:0; width:0; height:0;}
+  .cf-box{
+    width:22px; height:22px; border-radius:6px; border:1.5px solid var(--border);
+    background:var(--panel); display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; transition:all .15s ease;
+  }
+  .check-field.checked .cf-box{background:var(--accent); border-color:var(--accent);}
+  .cf-box svg{width:13px; height:13px; opacity:0; transform:scale(0.6); transition:all .12s ease;}
+  .check-field.checked .cf-box svg{opacity:1; transform:scale(1);}
+  .tick-yes{color:var(--accent); font-weight:600;}
+  .tick-no{color:var(--text-dim);}
+
+  table{width:100%; border-collapse:collapse; font-size:12.8px;}
+  thead th{
+    text-align:left; color:var(--text-dim); font-weight:500; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.4px; padding:8px 10px; border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  tbody td{padding:9px 10px; border-bottom:1px solid rgba(38,48,63,0.6); vertical-align:middle;}
+  tbody tr:hover{background:rgba(255,255,255,0.02);}
+  .table-scroll{overflow-x:auto; border-radius:8px;}
+  .badge{
+    display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px;
+    background:var(--panel-2); border:1px solid var(--border); white-space:nowrap;
+  }
+  .badge.role-admin{color:var(--warn); border-color:rgba(245,166,35,0.4);}
+  .badge.role-tecnico{color:var(--info); border-color:rgba(63,169,245,0.4);}
+
+  .empty{
+    text-align:center; padding:36px 20px; color:var(--text-dim); font-size:13px;
+  }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:var(--panel-2); border:1px solid var(--accent); color:var(--text);
+    padding:10px 18px; border-radius:9px; font-size:13px; z-index:100;
+    box-shadow:0 10px 30px rgba(0,0,0,0.4); animation:toastIn .18s ease-out;
+  }
+  @keyframes toastIn{from{opacity:0; transform:translate(-50%,8px);} to{opacity:1; transform:translate(-50%,0);}}
+
+  .filters{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;}
+  .filters .field{margin-bottom:0; min-width:150px; flex:1;}
+
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(6,9,15,0.7); display:flex; align-items:center;
+    justify-content:center; z-index:50; padding:20px;
+  }
+  .modal{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:24px;
+    width:100%; max-width:360px;
+  }
+  .modal h3{font-size:15px; margin-bottom:14px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:16px;}
+
+  .row-actions{display:flex; gap:6px;}
+  .footer-note{text-align:center; color:var(--text-dim); font-size:11px; margin-top:26px;}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="module">
+/* ============================================================
+   RELEVAMIENTO NETECO — versión Firebase
+   Almacenamiento: Firestore (colecciones "usuarios" y "entradas").
+   Autenticación de acceso a Firestore: Anónima (solo habilita la
+   conexión); el login real de cada persona lo maneja esta app
+   contra la colección "usuarios".
+   ============================================================ */
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, deleteDoc,
+  collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+// ⬇⬇⬇ REEMPLAZÁ ESTO por el firebaseConfig que copiaste de la consola ⬇⬇⬇
+const firebaseConfig = {
+  apiKey: "AIzaSyBcocsqnBFqiQVRBalvsVM1jL9ZwPvh5VM",
+  authDomain: "relevamiento-neteco.firebaseapp.com",
+  projectId: "relevamiento-neteco",
+  storageBucket: "relevamiento-neteco.firebasestorage.app",
+  messagingSenderId: "1068842986414",
+  appId: "1:1068842986414:web:2d3f92d7fb358f4756f63f"
+};
+// ⬆⬆⬆ REEMPLAZÁ ESTO por el firebaseConfig que copiaste de la consola ⬆⬆⬆
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const auth = getAuth(fbApp);
+
+const USERS_COL = "usuarios";
+const ENTRIES_COL = "entradas";
+
+const FIELD_DEFS = [
+  {key:"utpRbsControladora", label:"Conexión de UTP RBS a controladora"},
+  {key:"utpBateriaControladora", label:"Conexión de UTP batería a controladora"},
+  {key:"powerBateria", label:"Conexión de power batería"},
+  {key:"utpCascadaBateria", label:"Conexión de UTP Cascada batería"},
+  {key:"finCascadaBateria", label:"Conexión de fin de Cascada batería"},
+  {key:"cableTeco", label:"Cable de teco"},
+];
+
+// Listado inicial de técnicos. Se cargan automáticamente la primera vez
+// que se usa la app, con una contraseña provisoria igual para todos
+// (NETECO_TECNICOS_PASS_INICIAL) que el administrador debería resetear
+// individualmente desde la pestaña "Usuarios".
+const TECNICOS_INICIALES = [
+  "Pablo Giarrizzo",
+  "Ivan Aparicio",
+  "Jose Matteo",
+  "Ricardo Sanchez",
+  "Julian Vazquez",
+  "Pablo Guzman",
+  "Garcia Fernanda",
+  "Cornero Berrutti Santiago",
+  "Naterro Cesar Luis",
+  "Macri, Damian",
+];
+const PASS_INICIAL_TECNICOS = "Neteco2026";
+
+function slugUsername(nombre){
+  return nombre
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/,/g, " ")
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .join(".");
+}
+
+function buildDefaultUsers(){
+  const users = { admin: {password:"admin123", nombre:"Administrador", role:"admin", mustChangePassword:true} };
+  const seen = {};
+  TECNICOS_INICIALES.forEach(nombreRaw=>{
+    const nombre = nombreRaw.replace(/,\s*/g, ", ").trim();
+    let u = slugUsername(nombreRaw);
+    if(seen[u]){ seen[u]++; u = `${u}${seen[u]}`; } else { seen[u]=1; }
+    users[u] = {password: PASS_INICIAL_TECNICOS, nombre, role:"tecnico", mustChangePassword:true};
+  });
+  return users;
+}
+
+let state = {
+  users: null,
+  entries: null,
+  session: null, // {username, nombre, role}
+  pendingPasswordChange: null, // {username, nombre, role} while user must set a new password
+  view: "login",
+  adminTab: "carga",
+  loading: true,
+  error: null,
+};
+
+const root = document.getElementById("root");
+
+/* ---------------- storage helpers (Firestore) ---------------- */
+
+function waitForAuth(){
+  return new Promise((resolve, reject)=>{
+    signInAnonymously(auth).catch(reject);
+    onAuthStateChanged(auth, (user)=>{
+      if(user) resolve(user);
+    });
+  });
+}
+
+async function loadUsers(){
+  const snap = await getDocs(collection(db, USERS_COL));
+  if(snap.empty){
+    const defaults = buildDefaultUsers();
+    await saveUsers(defaults);
+    return defaults;
+  }
+  const users = {};
+  snap.forEach(d=>{ users[d.id] = d.data(); });
+  return users;
+}
+async function saveUsers(users){
+  const snap = await getDocs(collection(db, USERS_COL));
+  const existingIds = [];
+  snap.forEach(d=> existingIds.push(d.id));
+  const targetIds = new Set(Object.keys(users));
+  await Promise.all(Object.entries(users).map(([u, data])=> setDoc(doc(db, USERS_COL, u), data)));
+  const toDelete = existingIds.filter(id=> !targetIds.has(id));
+  await Promise.all(toDelete.map(id=> deleteDoc(doc(db, USERS_COL, id))));
+}
+async function loadEntries(){
+  const snap = await getDocs(collection(db, ENTRIES_COL));
+  const entries = [];
+  snap.forEach(d=> entries.push({...d.data(), id:d.id}));
+  return entries;
+}
+async function saveEntries(entries){
+  const snap = await getDocs(collection(db, ENTRIES_COL));
+  const existingIds = [];
+  snap.forEach(d=> existingIds.push(d.id));
+  const targetIds = new Set(entries.map(e=>e.id));
+  await Promise.all(entries.map(e=> setDoc(doc(db, ENTRIES_COL, e.id), e))); 
+  const toDelete = existingIds.filter(id=> !targetIds.has(id));
+  await Promise.all(toDelete.map(id=> deleteDoc(doc(db, ENTRIES_COL, id))));
+}
+
+function genId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function genPassword(){
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let p=""; for(let i=0;i<8;i++) p+=chars[Math.floor(Math.random()*chars.length)];
+  return p;
+}
+function today(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){
+  if(!iso) return "—";
+  const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`;
+}
+
+let toastTimer=null;
+function showToast(msg){
+  clearTimeout(toastTimer);
+  let t = document.querySelector(".toast");
+  if(!t){ t=document.createElement("div"); t.className="toast"; document.body.appendChild(t); }
+  t.textContent = msg;
+  toastTimer = setTimeout(()=>{ t.remove(); }, 2600);
+}
+
+/* ---------------- init ---------------- */
+
+async function init(){
+  render(); // loading state
+  try{
+    await waitForAuth();
+    state.users = await loadUsers();
+    state.entries = await loadEntries();
+  }catch(e){
+    console.error(e);
+    state.error = "No se pudo conectar con Firebase. Revisá que el firebaseConfig esté bien pegado en el archivo y que Firestore + Authentication (Anónimo) estén habilitados en la consola.";
+  }
+  state.loading = false;
+  render();
+}
+
+/* ---------------- render dispatcher ---------------- */
+
+function render(){
+  if(state.loading){
+    root.innerHTML = renderLoading();
+    return;
+  }
+  if(state.pendingPasswordChange){
+    root.innerHTML = renderForcePasswordChange();
+    bindForcePasswordChange();
+    return;
+  }
+  if(!state.session){
+    root.innerHTML = renderLogin();
+    bindLogin();
+    return;
+  }
+  if(state.session.role === "admin"){
+    root.innerHTML = renderShell(renderAdmin());
+  } else {
+    root.innerHTML = renderShell(renderTecnico());
+  }
+  bindShell();
+  if(state.session.role === "admin"){
+    bindAdmin();
+  } else {
+    bindTecnico();
+  }
+}
+
+function renderLoading(){
+  return `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:13px;">
+    Cargando Relevamiento Neteco…
+  </div>`;
+}
+
+/* ---------------- brand mark svg ---------------- */
+const brandSvg = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12 2L12 8" stroke="#04231C" stroke-width="2" stroke-linecap="round"/>
+  <path d="M7 6C9 4 15 4 17 6" stroke="#04231C" stroke-width="2" stroke-linecap="round"/>
+  <path d="M4 3C8 -0.5 16 -0.5 20 3" stroke="#04231C" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+  <circle cx="12" cy="14" r="3.4" stroke="#04231C" stroke-width="2"/>
+  <path d="M12 17.4V21" stroke="#04231C" stroke-width="2" stroke-linecap="round"/>
+  <path d="M9 21H15" stroke="#04231C" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
+
+/* ---------------- login ---------------- */
+
+function renderUserOptions(){
+  const entries = Object.entries(state.users || {});
+  const tecnicos = entries.filter(([u,v])=>v.role==="tecnico")
+    .sort((a,b)=> (a[1].nombre||a[0]).localeCompare(b[1].nombre||b[0], "es"));
+  const admins = entries.filter(([u,v])=>v.role==="admin")
+    .sort((a,b)=> (a[1].nombre||a[0]).localeCompare(b[1].nombre||b[0], "es"));
+  const opt = ([u,v]) => `<option value="${u}">${escapeHtml(v.nombre || u)}</option>`;
+  let html = "";
+  if(tecnicos.length){
+    html += `<optgroup label="Técnicos">${tecnicos.map(opt).join("")}</optgroup>`;
+  }
+  if(admins.length){
+    html += `<optgroup label="Administradores">${admins.map(opt).join("")}</optgroup>`;
+  }
+  return html;
+}
+
+function renderForcePasswordChange(){
+  const p = state.pendingPasswordChange;
+  return `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="brand-mark">${brandSvg}</div>
+      <h1>Elegí tu contraseña</h1>
+      <p class="lead">Hola ${escapeHtml(p.nombre)}. Es tu primer ingreso (o te resetearon la clave), así que antes de continuar tenés que definir una contraseña propia.</p>
+      <div id="fpc-error"></div>
+      <div class="field">
+        <label>Nueva contraseña</label>
+        <input type="password" id="fpc-pass1" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Repetir contraseña</label>
+        <input type="password" id="fpc-pass2" autocomplete="new-password">
+      </div>
+      <button type="button" id="fpc-submit" class="btn primary" style="width:100%;">Guardar y entrar</button>
+      <div class="hint">Elegí algo que puedas recordar fácil; solo vos vas a usarla para cargar tus relevamientos.</div>
+    </div>
+  </div>`;
+}
+
+function bindForcePasswordChange(){
+  const doSave = async ()=>{
+    const p1 = document.getElementById("fpc-pass1").value;
+    const p2 = document.getElementById("fpc-pass2").value;
+    const box = document.getElementById("fpc-error");
+    if(!p1 || p1.length < 4){
+      box.innerHTML = `<div class="error-msg">La contraseña debe tener al menos 4 caracteres.</div>`;
+      return;
+    }
+    if(p1 !== p2){
+      box.innerHTML = `<div class="error-msg">Las contraseñas no coinciden.</div>`;
+      return;
+    }
+    const pending = state.pendingPasswordChange;
+    state.users = await loadUsers();
+    if(!state.users[pending.username]){
+      box.innerHTML = `<div class="error-msg">Tu usuario ya no existe. Pedile al administrador que te vuelva a crear el acceso.</div>`;
+      return;
+    }
+    state.users[pending.username].password = p1;
+    state.users[pending.username].mustChangePassword = false;
+    await saveUsers(state.users);
+    state.session = {username: pending.username, nombre: pending.nombre, role: pending.role};
+    state.pendingPasswordChange = null;
+    render();
+    showToast("Contraseña actualizada");
+  };
+  document.getElementById("fpc-submit").addEventListener("click", doSave);
+  document.getElementById("fpc-pass2").addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){ e.preventDefault(); doSave(); }
+  });
+}
+
+function renderLogin(){
+  return `
+  <div class="login-wrap">
+    <svg class="signal-art" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice">
+      <g stroke="#1E2A3A" stroke-width="1.4" fill="none">
+        <path d="M-50 420 L200 260 L420 340 L650 180 L900 260" />
+        <circle cx="200" cy="260" r="4" fill="#1E2A3A" stroke="none"/>
+        <circle cx="420" cy="340" r="4" fill="#1E2A3A" stroke="none"/>
+        <circle cx="650" cy="180" r="4" fill="#1E2A3A" stroke="none"/>
+      </g>
+      <g stroke="#152030" stroke-width="1" fill="none" opacity="0.7">
+        <circle cx="650" cy="180" r="40"/>
+        <circle cx="650" cy="180" r="70"/>
+        <circle cx="650" cy="180" r="100"/>
+      </g>
+    </svg>
+    <div class="login-card">
+      <div class="brand-mark">${brandSvg}</div>
+      <h1>Relevamiento Neteco</h1>
+      <p class="lead">Ingresá con tu usuario y contraseña para cargar o consultar relevamientos de sitio.</p>
+      ${state.error ? `<div class="error-msg">${state.error}</div>` : ""}
+      ${state.warning ? `<div class="warn-msg">${state.warning}</div>` : ""}
+      <div id="login-error"></div>
+      <form id="login-form">
+        <div class="field">
+          <label>Usuario</label>
+          <select id="login-user" required>
+            <option value="" disabled selected>Seleccioná tu nombre</option>
+            ${renderUserOptions()}
+          </select>
+        </div>
+        <div class="field">
+          <label>Contraseña</label>
+          <input type="password" id="login-pass" autocomplete="current-password" required>
+        </div>
+        <button type="button" id="login-submit" class="btn primary" style="width:100%;">Ingresar</button>
+      </form>
+      <div class="hint">Acceso interno de campo. Si olvidaste tu contraseña, pedile al administrador que la reinicie.</div>
+      <div class="hint" style="text-align:center; margin-top:18px; opacity:0.7;">Sistema desarrollado por Fernanda García</div>
+    </div>
+  </div>`;
+}
+
+function bindLogin(){
+  const form = document.getElementById("login-form");
+  if(!form) return;
+  const doLogin = ()=>{
+    const u = document.getElementById("login-user").value.trim();
+    const p = document.getElementById("login-pass").value;
+    const box = document.getElementById("login-error");
+    if(!u){
+      box.innerHTML = `<div class="error-msg">Seleccioná tu nombre de la lista.</div>`;
+      return;
+    }
+    const user = state.users ? state.users[u] : null;
+    if(!user || user.password !== p){
+      box.innerHTML = `<div class="error-msg">Usuario o contraseña incorrectos.</div>`;
+      return;
+    }
+    if(user.mustChangePassword){
+      state.pendingPasswordChange = {username:u, nombre:user.nombre || u, role:user.role};
+      state.error = null;
+      render();
+      return;
+    }
+    state.session = {username:u, nombre:user.nombre || u, role:user.role};
+    state.error = null;
+    render();
+  };
+  document.getElementById("login-submit").addEventListener("click", doLogin);
+  form.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){ e.preventDefault(); doLogin(); }
+  });
+}
+
+/* ---------------- shell (topbar) ---------------- */
+
+function renderShell(inner){
+  const s = state.session;
+  return `
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">${brandSvg}</div>
+      <div class="brand-text">
+        <div class="title">Relevamiento Neteco</div>
+        <div class="sub">${s.role === "admin" ? "PANEL ADMINISTRADOR" : "CARGA DE TÉCNICO"}</div>
+      </div>
+    </div>
+    <div class="who">
+      <div class="name">Conectado como <b>${s.nombre}</b> <span class="badge role-${s.role}" style="margin-left:6px;">${s.role === "admin" ? "Admin" : "Técnico"}</span></div>
+      <button class="btn ghost small" id="btn-change-pass">Cambiar mi clave</button>
+      <button class="btn ghost small" id="btn-logout">Salir</button>
+    </div>
+  </div>
+  <div class="shell">
+    ${state.warning ? `<div class="warn-msg">${state.warning}</div>` : ""}
+    ${inner}
+  </div>
+  <div class="footer-note">Relevamiento Neteco · datos almacenados de forma compartida para todo el equipo</div>
+  <div class="footer-note" style="margin-top:4px; opacity:0.75;">Sistema desarrollado por Fernanda García</div>
+  `;
+}
+
+function bindShell(){
+  document.getElementById("btn-logout").addEventListener("click", ()=>{
+    state.session = null;
+    render();
+  });
+  document.getElementById("btn-change-pass").addEventListener("click", ()=>{
+    openSelfPasswordModal();
+  });
+}
+
+function openSelfPasswordModal(){
+  const s = state.session;
+  const bg = document.createElement("div");
+  bg.className = "modal-bg";
+  bg.innerHTML = `
+    <div class="modal">
+      <h3>Cambiar mi contraseña</h3>
+      <div id="scp-error"></div>
+      <div class="field">
+        <label>Nueva contraseña</label>
+        <input type="password" id="scp-pass1" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>Repetir contraseña</label>
+        <input type="password" id="scp-pass2" autocomplete="new-password">
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="scp-cancel">Cancelar</button>
+        <button class="btn primary" id="scp-confirm">Guardar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+  bg.querySelector("#scp-cancel").addEventListener("click", ()=> bg.remove());
+  bg.addEventListener("click", (e)=>{ if(e.target === bg) bg.remove(); });
+  bg.querySelector("#scp-confirm").addEventListener("click", async ()=>{
+    const p1 = bg.querySelector("#scp-pass1").value;
+    const p2 = bg.querySelector("#scp-pass2").value;
+    const box = bg.querySelector("#scp-error");
+    if(!p1 || p1.length < 4){
+      box.innerHTML = `<div class="error-msg">La contraseña debe tener al menos 4 caracteres.</div>`;
+      return;
+    }
+    if(p1 !== p2){
+      box.innerHTML = `<div class="error-msg">Las contraseñas no coinciden.</div>`;
+      return;
+    }
+    state.users = await loadUsers();
+    if(state.users[s.username]){
+      state.users[s.username].password = p1;
+      state.users[s.username].mustChangePassword = false;
+      await saveUsers(state.users);
+      showToast("Contraseña actualizada");
+    }
+    bg.remove();
+  });
+}
+
+/* ---------------- técnico view ---------------- */
+
+function renderTecnico(){
+  const mine = state.entries
+    .filter(e=>e.tecnicoUsuario === state.session.username)
+    .sort((a,b)=> b.timestamp - a.timestamp)
+    .slice(0,8);
+
+  return `
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Nuevo relevamiento</h2>
+        <div class="desc">Completá los datos del sitio visitado.</div>
+      </div>
+    </div>
+    <div id="form-msg"></div>
+    <form id="entry-form">
+      <div class="grid2">
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" id="f-fecha" value="${today()}" required>
+        </div>
+        <div class="field">
+          <label>Sitio</label>
+          <input type="text" id="f-sitio" placeholder="Ej: BSAS-0231" required>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:2px;">
+        ${FIELD_DEFS.map(f=>`
+          <label class="check-field" id="wrap-${f.key}" data-key="${f.key}">
+            <span class="cf-label">${f.label}</span>
+            <input type="checkbox" id="f-${f.key}">
+            <span class="cf-box">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#04231C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </label>
+        `).join("")}
+      </div>
+      <div class="field" style="margin-top:2px;">
+        <label>Comentarios</label>
+        <textarea id="f-comentarios" placeholder="Observaciones, incidencias, materiales usados, etc."></textarea>
+      </div>
+      <button type="button" id="entry-submit" class="btn primary">Guardar relevamiento</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Mis últimas cargas</h2>
+        <div class="desc">Últimos relevamientos que ingresaste.</div>
+      </div>
+    </div>
+    ${mine.length === 0 ? `<div class="empty">Todavía no cargaste ningún relevamiento.</div>` : `
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>Fecha</th><th>Sitio</th>
+          ${FIELD_DEFS.map(f=>`<th>${f.label}</th>`).join("")}
+          <th>Comentarios</th>
+        </tr></thead>
+        <tbody>
+          ${mine.map(rowHtml).join("")}
+        </tbody>
+      </table>
+    </div>`}
+  </div>
+  `;
+}
+
+function tickMark(v){
+  return v
+    ? `<span class="tick-yes">✓</span>`
+    : `<span class="tick-no">—</span>`;
+}
+
+function rowHtml(e){
+  return `<tr>
+    <td class="mono">${fmtDate(e.fecha)}</td>
+    <td class="mono">${escapeHtml(e.sitio)}</td>
+    ${FIELD_DEFS.map(f=>`<td>${tickMark(e[f.key])}</td>`).join("")}
+    <td style="max-width:220px; white-space:normal; color:var(--text-dim);">${escapeHtml(e.comentarios || "—")}</td>
+  </tr>`;
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str ?? "";
+  return d.innerHTML;
+}
+
+function bindTecnico(){
+  const form = document.getElementById("entry-form");
+
+  FIELD_DEFS.forEach(f=>{
+    const wrap = document.getElementById(`wrap-${f.key}`);
+    const box = document.getElementById(`f-${f.key}`);
+    box.addEventListener("change", ()=>{
+      wrap.classList.toggle("checked", box.checked);
+    });
+  });
+
+  const doSave = async ()=>{
+    const entry = {
+      id: genId(),
+      tecnicoUsuario: state.session.username,
+      tecnicoNombre: state.session.nombre,
+      fecha: document.getElementById("f-fecha").value,
+      sitio: document.getElementById("f-sitio").value.trim(),
+      comentarios: document.getElementById("f-comentarios").value.trim(),
+      timestamp: Date.now(),
+    };
+    if(!entry.fecha || !entry.sitio){
+      document.getElementById("form-msg").innerHTML = `<div class="error-msg">Completá al menos la fecha y el sitio.</div>`;
+      return;
+    }
+    FIELD_DEFS.forEach(f=>{
+      entry[f.key] = document.getElementById(`f-${f.key}`).checked;
+    });
+    const btn = document.getElementById("entry-submit");
+    btn.disabled = true; btn.textContent = "Guardando…";
+    try{
+      // re-fetch latest to avoid clobbering concurrent writes as much as possible
+      state.entries = await loadEntries();
+      state.entries.push(entry);
+      await saveEntries(state.entries);
+      document.getElementById("form-msg").innerHTML = `<div class="ok-msg">Relevamiento guardado correctamente.</div>`;
+      render();
+      showToast("Relevamiento guardado");
+    }catch(err){
+      document.getElementById("form-msg").innerHTML = `<div class="error-msg">No se pudo guardar. Probá de nuevo.</div>`;
+      btn.disabled = false; btn.textContent = "Guardar relevamiento";
+    }
+  };
+  document.getElementById("entry-submit").addEventListener("click", doSave);
+  form.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter" && e.target.tagName !== "TEXTAREA"){ e.preventDefault(); doSave(); }
+  });
+}
+
+/* ---------------- admin view ---------------- */
+
+function renderAdmin(){
+  return `
+  <div class="tabs">
+    <div class="tab ${state.adminTab==='carga'?'active':''}" data-tab="carga">Relevamientos</div>
+    <div class="tab ${state.adminTab==='usuarios'?'active':''}" data-tab="usuarios">Usuarios</div>
+  </div>
+  ${state.adminTab === 'carga' ? renderAdminEntries() : renderAdminUsers()}
+  `;
+}
+
+function renderAdminEntries(){
+  const tecnicos = Object.entries(state.users).filter(([u,v])=>v.role==="tecnico");
+  return `
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Carga de todo el equipo</h2>
+        <div class="desc">${state.entries.length} relevamiento(s) registrados en total.</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn small" id="btn-refresh">Actualizar</button>
+        <button class="btn primary small" id="btn-export">Exportar a Excel</button>
+      </div>
+    </div>
+    <div class="filters">
+      <div class="field">
+        <label>Técnico</label>
+        <select id="fl-tecnico">
+          <option value="">Todos</option>
+          ${tecnicos.map(([u,v])=>`<option value="${u}">${escapeHtml(v.nombre||u)}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field">
+        <label>Sitio contiene</label>
+        <input type="text" id="fl-sitio" placeholder="Ej: BSAS">
+      </div>
+      <div class="field">
+        <label>Desde</label>
+        <input type="date" id="fl-desde">
+      </div>
+      <div class="field">
+        <label>Hasta</label>
+        <input type="date" id="fl-hasta">
+      </div>
+    </div>
+    <div id="admin-table-wrap"></div>
+  </div>`;
+}
+
+function getFilteredEntries(){
+  const tecnico = document.getElementById("fl-tecnico")?.value || "";
+  const sitio = (document.getElementById("fl-sitio")?.value || "").toLowerCase();
+  const desde = document.getElementById("fl-desde")?.value || "";
+  const hasta = document.getElementById("fl-hasta")?.value || "";
+  return state.entries
+    .filter(e=> !tecnico || e.tecnicoUsuario === tecnico)
+    .filter(e=> !sitio || (e.sitio||"").toLowerCase().includes(sitio))
+    .filter(e=> !desde || e.fecha >= desde)
+    .filter(e=> !hasta || e.fecha <= hasta)
+    .sort((a,b)=> b.timestamp - a.timestamp);
+}
+
+function renderAdminTable(){
+  const rows = getFilteredEntries();
+  const wrap = document.getElementById("admin-table-wrap");
+  if(!wrap) return;
+  wrap.innerHTML = `
+  <div class="table-scroll">
+    <table>
+      <thead><tr>
+        <th>Fecha</th><th>Sitio</th><th>Técnico</th>
+        ${FIELD_DEFS.map(f=>`<th>${f.label}</th>`).join("")}
+        <th>Comentarios</th><th></th>
+      </tr></thead>
+      <tbody>
+        ${rows.length === 0
+          ? `<tr><td colspan="${3 + FIELD_DEFS.length + 2}"><div class="empty">No hay relevamientos que coincidan con los filtros. Los técnicos todavía no cargaron ninguno, o probá ajustar los filtros.</div></td></tr>`
+          : rows.map(e=>`<tr>
+          <td class="mono">${fmtDate(e.fecha)}</td>
+          <td class="mono">${escapeHtml(e.sitio)}</td>
+          <td>${escapeHtml(e.tecnicoNombre||e.tecnicoUsuario)}</td>
+          ${FIELD_DEFS.map(f=>`<td>${tickMark(e[f.key])}</td>`).join("")}
+          <td style="max-width:200px; white-space:normal; color:var(--text-dim);">${escapeHtml(e.comentarios||"—")}</td>
+          <td><button class="btn ghost small danger-del" data-id="${e.id}" title="Eliminar">✕</button></td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`;
+
+  wrap.querySelectorAll(".danger-del").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("¿Eliminar este relevamiento? Esta acción no se puede deshacer.")) return;
+      state.entries = state.entries.filter(e=>e.id !== btn.dataset.id);
+      await saveEntries(state.entries);
+      renderAdminTable();
+      showToast("Relevamiento eliminado");
+    });
+  });
+}
+
+function getMissingTecnicos(){
+  const seen = {};
+  return TECNICOS_INICIALES
+    .map(nombreRaw=>{
+      const nombre = nombreRaw.replace(/,\s*/g, ", ").trim();
+      let u = slugUsername(nombreRaw);
+      if(seen[u]){ seen[u]++; u = `${u}${seen[u]}`; } else { seen[u]=1; }
+      return {u, nombre};
+    })
+    .filter(({u})=> !state.users[u]);
+}
+
+function renderAdminUsers(){
+  const users = Object.entries(state.users);
+  const missing = getMissingTecnicos();
+  return `
+  ${missing.length > 0 ? `
+  <div class="panel" style="border-color:rgba(245,166,35,0.4);">
+    <div class="panel-head">
+      <div>
+        <h2>Técnicos predefinidos pendientes de cargar</h2>
+        <div class="desc">Faltan ${missing.length} usuario(s) del listado inicial de técnicos: ${missing.map(m=>escapeHtml(m.nombre)).join(", ")}.</div>
+      </div>
+      <button class="btn primary small" id="btn-seed-tecnicos">Cargar técnicos predefinidos</button>
+    </div>
+  </div>` : ""}
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Agregar usuario</h2>
+        <div class="desc">Creá accesos para técnicos o nuevos administradores.</div>
+      </div>
+    </div>
+    <div id="user-msg"></div>
+    <form id="add-user-form">
+      <div class="grid3">
+        <div class="field">
+          <label>Usuario</label>
+          <input type="text" id="nu-user" required>
+        </div>
+        <div class="field">
+          <label>Nombre y apellido</label>
+          <input type="text" id="nu-nombre" required>
+        </div>
+        <div class="field">
+          <label>Rol</label>
+          <select id="nu-role">
+            <option value="tecnico">Técnico</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="max-width:260px;">
+        <label>Contraseña inicial</label>
+        <input type="text" id="nu-pass" class="mono" value="${genPassword()}" required>
+      </div>
+      <button type="button" id="add-user-submit" class="btn primary">Crear usuario</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Usuarios del equipo</h2>
+        <div class="desc">${users.length} usuario(s) con acceso.</div>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Cargas</th><th></th></tr></thead>
+        <tbody>
+          ${users.map(([u,v])=>{
+            const count = state.entries.filter(e=>e.tecnicoUsuario===u).length;
+            return `<tr>
+              <td class="mono">${escapeHtml(u)}</td>
+              <td>${escapeHtml(v.nombre||"—")}</td>
+              <td><span class="badge role-${v.role}">${v.role==="admin"?"Admin":"Técnico"}</span></td>
+              <td class="mono">${count}</td>
+              <td>
+                <div class="row-actions">
+                  <button class="btn small reset-pass" data-u="${u}">Resetear clave</button>
+                  <button class="btn small danger remove-user" data-u="${u}">Quitar</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function bindAdmin(){
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.addEventListener("click", ()=>{
+      state.adminTab = t.dataset.tab;
+      render();
+    });
+  });
+
+  if(state.adminTab === "carga"){
+    renderAdminTable();
+    ["fl-tecnico","fl-sitio","fl-desde","fl-hasta"].forEach(id=>{
+      document.getElementById(id).addEventListener("input", renderAdminTable);
+      document.getElementById(id).addEventListener("change", renderAdminTable);
+    });
+    document.getElementById("btn-export").addEventListener("click", exportToExcel);
+    document.getElementById("btn-refresh").addEventListener("click", async ()=>{
+      const btn = document.getElementById("btn-refresh");
+      btn.disabled = true; btn.textContent = "Actualizando…";
+      state.entries = await loadEntries();
+      state.users = await loadUsers();
+      render();
+      showToast("Datos actualizados");
+    });
+  } else {
+    const seedBtn = document.getElementById("btn-seed-tecnicos");
+    if(seedBtn){
+      seedBtn.addEventListener("click", async ()=>{
+        state.users = await loadUsers();
+        const missing = getMissingTecnicos();
+        missing.forEach(({u, nombre})=>{
+          state.users[u] = {password: PASS_INICIAL_TECNICOS, nombre, role:"tecnico", mustChangePassword:true};
+        });
+        await saveUsers(state.users);
+        showToast(`${missing.length} técnico(s) cargado(s) con clave "${PASS_INICIAL_TECNICOS}"`);
+        render();
+      });
+    }
+    const form = document.getElementById("add-user-form");
+    const doCreate = async ()=>{
+      const u = document.getElementById("nu-user").value.trim();
+      const nombre = document.getElementById("nu-nombre").value.trim();
+      const role = document.getElementById("nu-role").value;
+      const pass = document.getElementById("nu-pass").value;
+      const msg = document.getElementById("user-msg");
+      if(!u || !pass){
+        msg.innerHTML = `<div class="error-msg">Completá usuario y contraseña.</div>`;
+        return;
+      }
+      state.users = await loadUsers();
+      if(state.users[u]){
+        msg.innerHTML = `<div class="error-msg">Ese usuario ya existe.</div>`;
+        return;
+      }
+      state.users[u] = {password:pass, nombre, role, mustChangePassword:true};
+      await saveUsers(state.users);
+      showToast(`Usuario "${u}" creado`);
+      render();
+    };
+    document.getElementById("add-user-submit").addEventListener("click", doCreate);
+    form.addEventListener("keydown", (e)=>{
+      if(e.key === "Enter"){ e.preventDefault(); doCreate(); }
+    });
+
+    document.querySelectorAll(".reset-pass").forEach(btn=>{
+      btn.addEventListener("click", ()=> openResetModal(btn.dataset.u));
+    });
+    document.querySelectorAll(".remove-user").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const u = btn.dataset.u;
+        if(u === state.session.username){
+          alert("No podés eliminar tu propio usuario mientras estás conectado con él.");
+          return;
+        }
+        const adminsLeft = Object.values(state.users).filter(v=>v.role==="admin").length;
+        if(state.users[u].role === "admin" && adminsLeft <= 1){
+          alert("No podés eliminar al único administrador restante.");
+          return;
+        }
+        if(!confirm(`¿Quitar el acceso de "${u}"? Sus relevamientos ya cargados se conservan.`)) return;
+        state.users = await loadUsers();
+        delete state.users[u];
+        await saveUsers(state.users);
+        showToast("Usuario eliminado");
+        render();
+      });
+    });
+  }
+}
+
+function openResetModal(username){
+  const bg = document.createElement("div");
+  bg.className = "modal-bg";
+  const suggested = genPassword();
+  bg.innerHTML = `
+    <div class="modal">
+      <h3>Resetear clave de "${escapeHtml(username)}"</h3>
+      <div class="field">
+        <label>Nueva contraseña</label>
+        <input type="text" id="rp-pass" class="mono" value="${suggested}">
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="rp-cancel">Cancelar</button>
+        <button class="btn primary" id="rp-confirm">Guardar clave</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+  bg.querySelector("#rp-cancel").addEventListener("click", ()=> bg.remove());
+  bg.addEventListener("click", (e)=>{ if(e.target === bg) bg.remove(); });
+  bg.querySelector("#rp-confirm").addEventListener("click", async ()=>{
+    const newPass = bg.querySelector("#rp-pass").value;
+    if(!newPass){ return; }
+    state.users = await loadUsers();
+    if(state.users[username]){
+      state.users[username].password = newPass;
+      state.users[username].mustChangePassword = true;
+      await saveUsers(state.users);
+      showToast(`Clave de "${username}" actualizada`);
+    }
+    bg.remove();
+  });
+}
+
+/* ---------------- export ---------------- */
+
+function exportToExcel(){
+  const rows = getFilteredEntries();
+  const data = rows.map(e=>{
+    const row = {
+      "Fecha": fmtDate(e.fecha),
+      "Sitio": e.sitio,
+      "Técnico": e.tecnicoNombre || e.tecnicoUsuario,
+    };
+    FIELD_DEFS.forEach(f=>{ row[f.label] = e[f.key] ? "✓" : ""; });
+    row["Comentarios"] = e.comentarios || "";
+    return row;
+  });
+  if(data.length === 0){
+    alert("No hay datos para exportar con los filtros actuales.");
+    return;
+  }
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws["!cols"] = Object.keys(data[0]).map(k => ({wch: Math.max(14, k.length+2)}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Relevamiento Neteco");
+  const stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `Relevamiento_Neteco_${stamp}.xlsx`);
+  showToast("Excel exportado");
+}
+
+init();
+</script>
+</body>
+</html>
