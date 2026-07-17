@@ -36,12 +36,12 @@
 -->
 <style>
   :root{
-    --bg:#0B0F16;
-    --panel:#121826;
-    --panel-2:#19212F;
-    --border:#26303F;
+    --bg:#161F2C;
+    --panel:#212B3B;
+    --panel-2:#2A3648;
+    --border:#3C4A5C;
     --text:#E7EDF4;
-    --text-dim:#8A97A6;
+    --text-dim:#9BA8B7;
     --accent:#00D9A5;
     --accent-dim:#0A6E56;
     --info:#3FA9F5;
@@ -273,13 +273,32 @@ const USERS_COL = "usuarios";
 const ENTRIES_COL = "entradas";
 
 const FIELD_DEFS = [
-  {key:"utpRbsControladora", label:"Conexión de UTP RBS a controladora"},
-  {key:"utpBateriaControladora", label:"Conexión de UTP batería a controladora"},
-  {key:"powerBateria", label:"Conexión de power batería"},
-  {key:"utpCascadaBateria", label:"Conexión de UTP Cascada batería"},
-  {key:"finCascadaBateria", label:"Conexión de fin de Cascada batería"},
-  {key:"cableTeco", label:"Cable de teco"},
+  {key:"modeloControladora", label:"1. Modelo de Controladora/Planta Energía", type:"text"},
+  {key:"modeloBateriaA", label:"2. Modelo Módulo de Baterías A", type:"text"},
+  {key:"modeloBateriaB", label:"3. Modelo Módulo de Baterías B", type:"text"},
+  {key:"modeloBateriaC", label:"4. Modelo Módulo de Baterías C", type:"text"},
+  {key:"modeloBateriaD", label:"5. Modelo Módulo de Baterías D", type:"text"},
+  {key:"sensorHumedad", label:"6. Sensor Humedad", type:"check"},
+  {key:"sensorHumo", label:"7. Sensor humo", type:"check"},
+  {key:"sensorTemperatura", label:"8. Sensor temperatura", type:"check"},
+  {key:"sensorPuerta", label:"9. Sensor de Puerta", type:"check"},
+  {key:"sensorWater", label:"10. Sensor water", type:"check"},
+  {key:"utpControladoraRbs", label:"11. Cableado de UTP desde controladora a RBS", type:"check"},
+  {key:"cablePowerBateria", label:"12. Cableado de cable Power a batería", type:"check",
+    subFields:[
+      {key:"conexionDCDU", label:"Conexión en DCDU", type:"check"},
+      {key:"conexionTermica", label:"Conexión en Térmica", type:"check"},
+    ]},
+  {key:"utpControladoraBateriaPrimaria", label:"13. Cableado de UTP desde Controladora a módulo de Batería primaria", type:"check"},
+  {key:"cascadaEntreModulos", label:"14. Cableado de cascada entre módulos de batería", type:"check"},
+  {key:"finCascadaBucle", label:"15. Conexión en Módulo de batería en final de Cascada Bucle", type:"check"},
+  {key:"cableTeco", label:"16. Cable de teco", type:"check"},
 ];
+
+// Lista "plana" de todos los campos (incluye los sub-campos de DCDU/Térmica
+// del punto 12), usada para tablas, exportación y lectura del formulario.
+const FIELD_DEFS_FLAT = FIELD_DEFS.flatMap(f => f.subFields ? [f, ...f.subFields] : [f]);
+
 
 // Listado inicial de técnicos. Se cargan automáticamente la primera vez
 // que se usa la app, con una contraseña provisoria igual para todos
@@ -727,8 +746,19 @@ function renderTecnico(){
           <input type="text" id="f-sitio" placeholder="Ej: BSAS-0231" required>
         </div>
       </div>
-      <div class="grid2" style="margin-top:2px;">
-        ${FIELD_DEFS.map(f=>`
+      <div class="field" style="margin-top:2px;">
+        <label style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">Modelos de equipamiento</label>
+        <div class="grid2">
+          ${FIELD_DEFS.filter(f=>f.type==="text").map(f=>`
+            <div class="field">
+              <label>${f.label}</label>
+              <input type="text" id="f-${f.key}" placeholder="Modelo / marca">
+            </div>
+          `).join("")}
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:10px;">
+        ${FIELD_DEFS.filter(f=>f.type==="check").map(f=>`
           <label class="check-field" id="wrap-${f.key}" data-key="${f.key}">
             <span class="cf-label">${f.label}</span>
             <input type="checkbox" id="f-${f.key}">
@@ -736,6 +766,20 @@ function renderTecnico(){
               <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#04231C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </span>
           </label>
+          ${f.subFields ? `
+          <div id="sub-${f.key}" class="hidden" style="grid-column:1 / -1; margin:-4px 0 4px 18px; display:none; gap:10px;" data-subwrap="${f.key}">
+            <div class="grid2">
+              ${f.subFields.map(sf=>`
+                <label class="check-field" id="wrap-${sf.key}" data-key="${sf.key}" style="background:var(--panel); border-style:dashed;">
+                  <span class="cf-label">${sf.label}</span>
+                  <input type="checkbox" id="f-${sf.key}">
+                  <span class="cf-box">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#04231C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  </span>
+                </label>
+              `).join("")}
+            </div>
+          </div>` : ""}
         `).join("")}
       </div>
       <div class="field" style="margin-top:2px;">
@@ -758,7 +802,7 @@ function renderTecnico(){
       <table>
         <thead><tr>
           <th>Fecha</th><th>Sitio</th>
-          ${FIELD_DEFS.map(f=>`<th>${f.label}</th>`).join("")}
+          ${FIELD_DEFS_FLAT.map(f=>`<th>${f.label}</th>`).join("")}
           <th>Comentarios</th>
         </tr></thead>
         <tbody>
@@ -776,11 +820,19 @@ function tickMark(v){
     : `<span class="tick-no">—</span>`;
 }
 
+function fieldCell(f, e){
+  if(f.type === "text"){
+    const v = e[f.key];
+    return v ? escapeHtml(v) : `<span class="tick-no">—</span>`;
+  }
+  return tickMark(e[f.key]);
+}
+
 function rowHtml(e){
   return `<tr>
     <td class="mono">${fmtDate(e.fecha)}</td>
     <td class="mono">${escapeHtml(e.sitio)}</td>
-    ${FIELD_DEFS.map(f=>`<td>${tickMark(e[f.key])}</td>`).join("")}
+    ${FIELD_DEFS_FLAT.map(f=>`<td>${fieldCell(f, e)}</td>`).join("")}
     <td style="max-width:220px; white-space:normal; color:var(--text-dim);">${escapeHtml(e.comentarios || "—")}</td>
   </tr>`;
 }
@@ -794,12 +846,33 @@ function escapeHtml(str){
 function bindTecnico(){
   const form = document.getElementById("entry-form");
 
-  FIELD_DEFS.forEach(f=>{
+  FIELD_DEFS_FLAT.filter(f=>f.type==="check").forEach(f=>{
     const wrap = document.getElementById(`wrap-${f.key}`);
     const box = document.getElementById(`f-${f.key}`);
     box.addEventListener("change", ()=>{
       wrap.classList.toggle("checked", box.checked);
     });
+  });
+
+  // Punto 12: al marcar "Cableado de cable Power a batería" se despliegan
+  // las opciones "Conexión en DCDU" / "Conexión en Térmica".
+  FIELD_DEFS.filter(f=>f.subFields).forEach(f=>{
+    const parentBox = document.getElementById(`f-${f.key}`);
+    const subWrap = document.getElementById(`sub-${f.key}`);
+    const syncVisibility = ()=>{
+      const show = parentBox.checked;
+      subWrap.style.display = show ? "flex" : "none";
+      subWrap.classList.toggle("hidden", !show);
+      if(!show){
+        f.subFields.forEach(sf=>{
+          const sfBox = document.getElementById(`f-${sf.key}`);
+          sfBox.checked = false;
+          document.getElementById(`wrap-${sf.key}`).classList.remove("checked");
+        });
+      }
+    };
+    parentBox.addEventListener("change", syncVisibility);
+    syncVisibility();
   });
 
   const doSave = async ()=>{
@@ -816,8 +889,9 @@ function bindTecnico(){
       document.getElementById("form-msg").innerHTML = `<div class="error-msg">Completá al menos la fecha y el sitio.</div>`;
       return;
     }
-    FIELD_DEFS.forEach(f=>{
-      entry[f.key] = document.getElementById(`f-${f.key}`).checked;
+    FIELD_DEFS_FLAT.forEach(f=>{
+      const el = document.getElementById(`f-${f.key}`);
+      entry[f.key] = f.type === "text" ? el.value.trim() : el.checked;
     });
     const btn = document.getElementById("entry-submit");
     btn.disabled = true; btn.textContent = "Guardando…";
@@ -913,17 +987,17 @@ function renderAdminTable(){
     <table>
       <thead><tr>
         <th>Fecha</th><th>Sitio</th><th>Técnico</th>
-        ${FIELD_DEFS.map(f=>`<th>${f.label}</th>`).join("")}
+        ${FIELD_DEFS_FLAT.map(f=>`<th>${f.label}</th>`).join("")}
         <th>Comentarios</th><th></th>
       </tr></thead>
       <tbody>
         ${rows.length === 0
-          ? `<tr><td colspan="${3 + FIELD_DEFS.length + 2}"><div class="empty">No hay relevamientos que coincidan con los filtros. Los técnicos todavía no cargaron ninguno, o probá ajustar los filtros.</div></td></tr>`
+          ? `<tr><td colspan="${3 + FIELD_DEFS_FLAT.length + 2}"><div class="empty">No hay relevamientos que coincidan con los filtros. Los técnicos todavía no cargaron ninguno, o probá ajustar los filtros.</div></td></tr>`
           : rows.map(e=>`<tr>
           <td class="mono">${fmtDate(e.fecha)}</td>
           <td class="mono">${escapeHtml(e.sitio)}</td>
           <td>${escapeHtml(e.tecnicoNombre||e.tecnicoUsuario)}</td>
-          ${FIELD_DEFS.map(f=>`<td>${tickMark(e[f.key])}</td>`).join("")}
+          ${FIELD_DEFS_FLAT.map(f=>`<td>${fieldCell(f, e)}</td>`).join("")}
           <td style="max-width:200px; white-space:normal; color:var(--text-dim);">${escapeHtml(e.comentarios||"—")}</td>
           <td><button class="btn ghost small danger-del" data-id="${e.id}" title="Eliminar">✕</button></td>
         </tr>`).join("")}
@@ -1166,7 +1240,9 @@ function exportToExcel(){
       "Sitio": e.sitio,
       "Técnico": e.tecnicoNombre || e.tecnicoUsuario,
     };
-    FIELD_DEFS.forEach(f=>{ row[f.label] = e[f.key] ? "✓" : ""; });
+    FIELD_DEFS_FLAT.forEach(f=>{
+      row[f.label] = f.type === "text" ? (e[f.key] || "") : (e[f.key] ? "✓" : "");
+    });
     row["Comentarios"] = e.comentarios || "";
     return row;
   });
