@@ -272,32 +272,64 @@ const auth = getAuth(fbApp);
 const USERS_COL = "usuarios";
 const ENTRIES_COL = "entradas";
 
-const FIELD_DEFS = [
-  {key:"modeloControladora", label:"1. Modelo de Controladora/Planta Energía", type:"text"},
-  {key:"modeloBateriaA", label:"2. Modelo Módulo de Baterías A", type:"text"},
-  {key:"modeloBateriaB", label:"3. Modelo Módulo de Baterías B", type:"text"},
-  {key:"modeloBateriaC", label:"4. Modelo Módulo de Baterías C", type:"text"},
-  {key:"modeloBateriaD", label:"5. Modelo Módulo de Baterías D", type:"text"},
-  {key:"sensorHumedad", label:"6. Sensor Humedad", type:"check"},
-  {key:"sensorHumo", label:"7. Sensor humo", type:"check"},
-  {key:"sensorTemperatura", label:"8. Sensor temperatura", type:"check"},
-  {key:"sensorPuerta", label:"9. Sensor de Puerta", type:"check"},
-  {key:"sensorWater", label:"10. Sensor water", type:"check"},
-  {key:"utpControladoraRbs", label:"11. Cableado de UTP desde controladora a RBS", type:"check"},
-  {key:"cablePowerBateria", label:"12. Cableado de cable Power a batería", type:"check",
-    subFields:[
-      {key:"conexionDCDU", label:"Conexión en DCDU", type:"check"},
-      {key:"conexionTermica", label:"Conexión en Térmica", type:"check"},
-    ]},
-  {key:"utpControladoraBateriaPrimaria", label:"13. Cableado de UTP desde Controladora a módulo de Batería primaria", type:"check"},
-  {key:"cascadaEntreModulos", label:"14. Cableado de cascada entre módulos de batería", type:"check"},
-  {key:"finCascadaBucle", label:"15. Conexión en Módulo de batería en final de Cascada Bucle", type:"check"},
-  {key:"cableTeco", label:"16. Cable de teco", type:"check"},
+const FIELD_GROUPS = [
+  {
+    title: "1. Planta de Energía",
+    kind: "check",
+    fields: [
+      {key:"plantaHuawei", label:"Huawei", type:"check"},
+      {key:"plantaZte", label:"ZTE", type:"check"},
+      {key:"plantaEmerson", label:"Emerson", type:"check"},
+      {key:"plantaEnclouse", label:"Enclouse", type:"check"},
+      {key:"plantaEaton", label:"Eaton", type:"check"},
+      {key:"plantaOtros", label:"Otros — Planta de Energía", type:"text", formLabel:"Otros", placeholder:"Escribí la marca"},
+    ]
+  },
+  {
+    title: "2. Baterías",
+    kind: "text",
+    fields: [
+      {key:"bateriaA", label:"Batería A — Marca/modelo", type:"text", formLabel:"Batería A", placeholder:"Marca/modelo"},
+      {key:"bateriaB", label:"Batería B — Marca/modelo", type:"text", formLabel:"Batería B", placeholder:"Marca/modelo"},
+      {key:"bateriaC", label:"Batería C — Marca/modelo", type:"text", formLabel:"Batería C", placeholder:"Marca/modelo"},
+      {key:"bateriaD", label:"Batería D — Marca/modelo", type:"text", formLabel:"Batería D", placeholder:"Marca/modelo"},
+      {key:"bateriaE", label:"Batería E — Marca/modelo", type:"text", formLabel:"Batería E", placeholder:"Marca/modelo"},
+      {key:"bateriaF", label:"Batería F — Marca/modelo", type:"text", formLabel:"Batería F", placeholder:"Marca/modelo"},
+    ]
+  },
+  {
+    title: "3. Sensores Gabinetes",
+    kind: "check",
+    fields: [
+      {key:"sensorTemperatura", label:"Temperatura", type:"check"},
+      {key:"sensorHumedad", label:"Humedad", type:"check"},
+      {key:"sensorHumo", label:"Humo", type:"check"},
+      {key:"sensorPuerta", label:"Puerta", type:"check"},
+      {key:"sensorWater", label:"Water", type:"check"},
+    ]
+  },
+  {
+    title: "4. Cableado",
+    kind: "check",
+    fields: [
+      {key:"utpControladoraRbs", label:"11. Cableado de UTP desde controladora a RBS", type:"check"},
+      {key:"cablePowerBateria", label:"12. Cableado de cable Power a batería", type:"check",
+        subFields:[
+          {key:"conexionDCDU", label:"Conexión en DCDU", type:"check"},
+          {key:"conexionTermica", label:"Conexión en Térmica", type:"check"},
+        ]},
+      {key:"utpControladoraBateriaPrimaria", label:"13. Cableado de UTP desde Controladora a módulo de Batería primaria", type:"check"},
+      {key:"cascadaEntreModulos", label:"14. Cableado de cascada entre módulos de batería", type:"check"},
+      {key:"finCascadaBucle", label:"15. Conexión en Módulo de batería en final de Cascada Bucle", type:"check"},
+    ]
+  },
 ];
 
-// Lista "plana" de todos los campos (incluye los sub-campos de DCDU/Térmica
-// del punto 12), usada para tablas, exportación y lectura del formulario.
-const FIELD_DEFS_FLAT = FIELD_DEFS.flatMap(f => f.subFields ? [f, ...f.subFields] : [f]);
+// Lista "plana" de todos los campos (incluye sub-campos como DCDU/Térmica),
+// usada para tablas, exportación y lectura del formulario.
+const FIELD_DEFS_FLAT = FIELD_GROUPS.flatMap(g =>
+  g.fields.flatMap(f => f.subFields ? [f, ...f.subFields] : [f])
+);
 
 
 // Listado inicial de técnicos. Se cargan automáticamente la primera vez
@@ -746,43 +778,54 @@ function renderTecnico(){
           <input type="text" id="f-sitio" placeholder="Ej: BSAS-0231" required>
         </div>
       </div>
-      <div class="field" style="margin-top:2px;">
-        <label style="font-size:13px; color:var(--text-dim); margin-bottom:8px;">Modelos de equipamiento</label>
+      ${FIELD_GROUPS.map(g => `
+      <div class="field" style="margin-top:14px;">
+        <label style="font-size:13px; color:var(--text); font-weight:600; margin-bottom:9px; display:block;">${g.title}</label>
         <div class="grid2">
-          ${FIELD_DEFS.filter(f=>f.type==="text").map(f=>`
-            <div class="field">
-              <label>${f.label}</label>
-              <input type="text" id="f-${f.key}" placeholder="Modelo / marca">
-            </div>
-          `).join("")}
-        </div>
-      </div>
-      <div class="grid2" style="margin-top:10px;">
-        ${FIELD_DEFS.filter(f=>f.type==="check").map(f=>`
-          <label class="check-field" id="wrap-${f.key}" data-key="${f.key}">
-            <span class="cf-label">${f.label}</span>
-            <input type="checkbox" id="f-${f.key}">
-            <span class="cf-box">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#04231C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </span>
-          </label>
-          ${f.subFields ? `
-          <div id="sub-${f.key}" class="hidden" style="grid-column:1 / -1; margin:-4px 0 4px 18px; display:none; gap:10px;" data-subwrap="${f.key}">
-            <div class="grid2">
-              ${f.subFields.map(sf=>`
-                <label class="check-field" id="wrap-${sf.key}" data-key="${sf.key}" style="background:var(--panel); border-style:dashed;">
-                  <span class="cf-label">${sf.label}</span>
-                  <input type="checkbox" id="f-${sf.key}">
+          ${g.fields.map(f => {
+            if(f.type === "text"){
+              return `
+              <div class="field">
+                <label>${f.formLabel || f.label}</label>
+                <input type="text" id="f-${f.key}" placeholder="${f.placeholder || ""}">
+              </div>`;
+            }
+            if(f.subFields){
+              return `
+              <div>
+                <label class="check-field" id="wrap-${f.key}" data-key="${f.key}">
+                  <span class="cf-label">${f.label}</span>
+                  <input type="checkbox" id="f-${f.key}">
                   <span class="cf-box">
                     <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#04231C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   </span>
                 </label>
-              `).join("")}
-            </div>
-          </div>` : ""}
-        `).join("")}
+                <div id="sub-${f.key}" class="hidden" style="margin:8px 0 0 14px; display:none; flex-direction:column; gap:8px;" data-subwrap="${f.key}">
+                  ${f.subFields.map(sf=>`
+                    <label class="check-field" id="wrap-${sf.key}" data-key="${sf.key}" style="background:var(--panel); border-style:dashed;">
+                      <span class="cf-label">${sf.label}</span>
+                      <input type="checkbox" id="f-${sf.key}">
+                      <span class="cf-box">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#04231C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </span>
+                    </label>
+                  `).join("")}
+                </div>
+              </div>`;
+            }
+            return `
+            <label class="check-field" id="wrap-${f.key}" data-key="${f.key}">
+              <span class="cf-label">${f.label}</span>
+              <input type="checkbox" id="f-${f.key}">
+              <span class="cf-box">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#04231C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            </label>`;
+          }).join("")}
+        </div>
       </div>
-      <div class="field" style="margin-top:2px;">
+      `).join("")}
+      <div class="field" style="margin-top:14px;">
         <label>Comentarios</label>
         <textarea id="f-comentarios" placeholder="Observaciones, incidencias, materiales usados, etc."></textarea>
       </div>
@@ -856,7 +899,7 @@ function bindTecnico(){
 
   // Punto 12: al marcar "Cableado de cable Power a batería" se despliegan
   // las opciones "Conexión en DCDU" / "Conexión en Térmica".
-  FIELD_DEFS.filter(f=>f.subFields).forEach(f=>{
+  FIELD_GROUPS.flatMap(g=>g.fields).filter(f=>f.subFields).forEach(f=>{
     const parentBox = document.getElementById(`f-${f.key}`);
     const subWrap = document.getElementById(`sub-${f.key}`);
     const syncVisibility = ()=>{
