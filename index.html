@@ -277,11 +277,16 @@ const FIELD_GROUPS = [
     title: "1. Planta de Energía",
     kind: "check",
     fields: [
-      {key:"plantaHuawei", label:"Huawei", type:"check"},
-      {key:"plantaZte", label:"ZTE", type:"check"},
-      {key:"plantaEmerson", label:"Emerson", type:"check"},
-      {key:"plantaEnclouse", label:"Enclouse", type:"check"},
-      {key:"plantaEaton", label:"Eaton", type:"check"},
+      {key:"plantaHuawei", label:"Huawei", type:"check",
+        subFields:[{key:"modeloHuawei", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+      {key:"plantaZte", label:"ZTE", type:"check",
+        subFields:[{key:"modeloZte", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+      {key:"plantaEmerson", label:"Emerson", type:"check",
+        subFields:[{key:"modeloEmerson", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+      {key:"plantaEnclouse", label:"Enclouse", type:"check",
+        subFields:[{key:"modeloEnclouse", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+      {key:"plantaEaton", label:"Eaton", type:"check",
+        subFields:[{key:"modeloEaton", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
       {key:"plantaOtros", label:"Otros — Planta de Energía", type:"text", formLabel:"Otros", placeholder:"Escribí la marca"},
     ]
   },
@@ -321,6 +326,7 @@ const FIELD_GROUPS = [
       {key:"utpControladoraBateriaPrimaria", label:"13. Cableado de UTP desde Controladora a módulo de Batería primaria", type:"check"},
       {key:"cascadaEntreModulos", label:"14. Cableado de cascada entre módulos de batería", type:"check"},
       {key:"finCascadaBucle", label:"15. Conexión en Módulo de batería en final de Cascada Bucle", type:"check"},
+      {key:"cableadoPuertaGabinete", label:"16. Cableado desde puerta gabinete a controladora", type:"check"},
     ]
   },
 ];
@@ -801,7 +807,12 @@ function renderTecnico(){
                   </span>
                 </label>
                 <div id="sub-${f.key}" class="hidden" style="margin:8px 0 0 14px; display:none; flex-direction:column; gap:8px;" data-subwrap="${f.key}">
-                  ${f.subFields.map(sf=>`
+                  ${f.subFields.map(sf => sf.type === "text" ? `
+                    <div class="field" style="margin-bottom:0;">
+                      <label>${sf.label}</label>
+                      <input type="text" id="f-${sf.key}" placeholder="${sf.placeholder || ""}">
+                    </div>
+                  ` : `
                     <label class="check-field" id="wrap-${sf.key}" data-key="${sf.key}" style="background:var(--panel); border-style:dashed;">
                       <span class="cf-label">${sf.label}</span>
                       <input type="checkbox" id="f-${sf.key}">
@@ -897,8 +908,8 @@ function bindTecnico(){
     });
   });
 
-  // Punto 12: al marcar "Cableado de cable Power a batería" se despliegan
-  // las opciones "Conexión en DCDU" / "Conexión en Térmica".
+  // Puntos con sub-campos (ej. punto 12 → DCDU/Térmica, marcas de planta →
+  // "Modelo controladora"): al marcar el ítem padre se despliega el detalle.
   FIELD_GROUPS.flatMap(g=>g.fields).filter(f=>f.subFields).forEach(f=>{
     const parentBox = document.getElementById(`f-${f.key}`);
     const subWrap = document.getElementById(`sub-${f.key}`);
@@ -908,9 +919,14 @@ function bindTecnico(){
       subWrap.classList.toggle("hidden", !show);
       if(!show){
         f.subFields.forEach(sf=>{
-          const sfBox = document.getElementById(`f-${sf.key}`);
-          sfBox.checked = false;
-          document.getElementById(`wrap-${sf.key}`).classList.remove("checked");
+          const sfEl = document.getElementById(`f-${sf.key}`);
+          if(sf.type === "text"){
+            sfEl.value = "";
+          } else {
+            sfEl.checked = false;
+            const sfWrap = document.getElementById(`wrap-${sf.key}`);
+            if(sfWrap) sfWrap.classList.remove("checked");
+          }
         });
       }
     };
