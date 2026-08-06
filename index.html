@@ -278,15 +278,15 @@ const FIELD_GROUPS = [
     kind: "check",
     fields: [
       {key:"plantaHuawei", label:"Huawei", type:"check",
-        subFields:[{key:"modeloHuawei", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+        subFields:[{key:"modeloHuawei", label:"Modelo controladora (Huawei)", formLabel:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
       {key:"plantaZte", label:"ZTE", type:"check",
-        subFields:[{key:"modeloZte", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+        subFields:[{key:"modeloZte", label:"Modelo controladora (ZTE)", formLabel:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
       {key:"plantaEmerson", label:"Emerson", type:"check",
-        subFields:[{key:"modeloEmerson", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+        subFields:[{key:"modeloEmerson", label:"Modelo controladora (Emerson)", formLabel:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
       {key:"plantaEnclouse", label:"Enclouse", type:"check",
-        subFields:[{key:"modeloEnclouse", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+        subFields:[{key:"modeloEnclouse", label:"Modelo controladora (Enclouse)", formLabel:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
       {key:"plantaEaton", label:"Eaton", type:"check",
-        subFields:[{key:"modeloEaton", label:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
+        subFields:[{key:"modeloEaton", label:"Modelo controladora (Eaton)", formLabel:"Modelo controladora", type:"text", placeholder:"Modelo controladora"}]},
       {key:"plantaOtros", label:"Otros — Planta de Energía", type:"text", formLabel:"Otros", placeholder:"Escribí la marca"},
     ]
   },
@@ -809,12 +809,12 @@ function renderTecnico(){
                 <div id="sub-${f.key}" class="hidden" style="margin:8px 0 0 14px; display:none; flex-direction:column; gap:8px;" data-subwrap="${f.key}">
                   ${f.subFields.map(sf => sf.type === "text" ? `
                     <div class="field" style="margin-bottom:0;">
-                      <label>${sf.label}</label>
+                      <label>${sf.formLabel || sf.label}</label>
                       <input type="text" id="f-${sf.key}" placeholder="${sf.placeholder || ""}">
                     </div>
                   ` : `
                     <label class="check-field" id="wrap-${sf.key}" data-key="${sf.key}" style="background:var(--panel); border-style:dashed;">
-                      <span class="cf-label">${sf.label}</span>
+                      <span class="cf-label">${sf.formLabel || sf.label}</span>
                       <input type="checkbox" id="f-${sf.key}">
                       <span class="cf-box">
                         <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="#04231C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
